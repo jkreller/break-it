@@ -13,6 +13,7 @@ $(function () {
   };
 
   var continueAnimating = true;
+  var startActive = true;
 
   var playerStats = {
     score: 0,
@@ -92,6 +93,11 @@ $(function () {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    if (startActive) {
+      drawStart();
+      return;
+    }
+
     drawBall();
 
     var ballLeft = ball.x - ball.radius;
@@ -165,8 +171,8 @@ $(function () {
     });
 
     if (emptyColumns === bricksData.columnCount) {
-      alert('You won!');
-      location.reload();
+      drawWin();
+      continueAnimating = false;
     }
 
     drawPlayerStats();
@@ -216,6 +222,49 @@ $(function () {
     ctx.textAlign = 'right';
     ctx.fillText('Deaths left: ' + (playerStats.allowedDeaths - playerStats.deaths) + '/' + playerStats.allowedDeaths, canvas.width - bricksData.offsetSides / 2, bricksData.offsetTop - bricksData.offsetTop / 3);
     ctx.closePath();
+  }
+
+  function drawStart() {
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(0, 0, 0, .5)';
+    ctx.fill();
+
+    ctx.font = 'lighter ' + canvas.width / 15 + 'px "Open Sans"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Break It!', canvas.width / 2, canvas.height/2);
+    ctx.closePath();
+
+    drawStartButton();
+  }
+
+  function drawStartButton() {
+    ctx.beginPath();
+    ctx.rect(restartButton.x, restartButton.y, restartButton.width, restartButton.height);
+    ctx.fillStyle = restartButton.color;
+    ctx.fill();
+
+    ctx.fillStyle = restartButton.fontColor;
+    ctx.font = restartButton.fontSize + 'px "Open Sans"';
+    ctx.textAlign = 'center';
+    ctx.fillText('Start', canvas.width / 2, restartButton.y + restartButton.fontSize);
+    ctx.closePath();
+  }
+
+  function drawWin() {
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(0, 0, 0, .5)';
+    ctx.fill();
+
+    ctx.font = 'lighter ' + canvas.width / 15 + 'px "Open Sans"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('You won!', canvas.width / 2, canvas.height/2);
+    ctx.closePath();
+
+    drawRestartButton();
   }
 
   function drawGameOver() {
@@ -278,7 +327,12 @@ $(function () {
 
     // restart button
     if (clickCanvasX >= restartButton.x && clickCanvasX <= restartButton.x + restartButton.width && clickCanvasY >= restartButton.y && clickCanvasY <= restartButton.y + restartButton.height) {
-      location.reload();
+      if (!continueAnimating && !startActive) {
+        location.reload();
+      } else if (startActive) {
+        startActive = false;
+        draw();
+      }
     }
   }
 
