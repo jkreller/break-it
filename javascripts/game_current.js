@@ -9,15 +9,19 @@ $(function () {
   $(canvas).click(clickHandler);
 
   var sounds = {
-    blub: new Audio('blub.mp3')
+    blub: new Audio('assets/blub.mp3')
   };
 
   var continueAnimating = true;
+  var startActive = true;
+  var startLevelActive = false;
+  var levelCount = 2;
 
   var playerStats = {
     score: 0,
     allowedDeaths: 3,
-    deaths: 0
+    deaths: 0,
+    currentLevel: 1
   };
 
   var paddle = {
@@ -50,29 +54,8 @@ $(function () {
 
   resetMovements();
 
-  var bricksData = {
-    rowCount: 3,
-    columnCount: 8,
-    padding: canvas.width / 50,
-    offsetTop: canvas.width / 30,
-    offsetSides: canvas.width / 50,
-    brickHeight: canvas.height / 20
-  };
-
-  bricksData.brickWidth = (canvas.width - 2 * bricksData.offsetSides) / bricksData.columnCount - bricksData.padding;
-  bricksData.bricksCount = bricksData.rowCount * bricksData.columnCount;
-
+  var bricksData = {};
   var bricks = [];
-
-  for (var i = 0; i < bricksData.columnCount; i++) {
-    bricks[i] = [];
-    for (var j = 0; j < bricksData.rowCount; j++) {
-      bricks[i][j] = {
-        x: bricksData.offsetSides + i * bricksData.brickWidth + bricksData.padding * i,
-        y: bricksData.offsetTop + j * bricksData.brickHeight + bricksData.padding * j
-      };
-    }
-  }
 
   var restartButton = {
     width: canvas.width / 8,
@@ -91,6 +74,15 @@ $(function () {
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (startLevelActive) {
+      fillBricksArray(playerStats.currentLevel);
+    }
+
+    if (startActive) {
+      drawStart();
+      return;
+    }
 
     drawBall();
 
@@ -164,9 +156,17 @@ $(function () {
       }
     });
 
+    // if player won level
     if (emptyColumns === bricksData.columnCount) {
-      alert('You won!');
-      location.reload();
+      if (levelCount === playerStats.currentLevel) {
+        drawWin();
+        continueAnimating = false;
+      } else {
+        resetMovements();
+        resetStats();
+        startLevelActive = true;
+        playerStats.currentLevel++;
+      }
     }
 
     drawPlayerStats();
@@ -174,6 +174,14 @@ $(function () {
     if (playerStats.deaths > playerStats.allowedDeaths) {
       drawGameOver();
       continueAnimating = false;
+    }
+
+    if (startLevelActive) {
+      if (!startActive) {
+        continueAnimating = false;
+        drawLevelText();
+      }
+      startLevelActive = false;
     }
 
     requestAnimationFrame(draw);
@@ -218,16 +226,104 @@ $(function () {
     ctx.closePath();
   }
 
-  function drawGameOver() {
-    ctx.beginPath();
-    ctx.rect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(0, 0, 0, .5)';
-    ctx.fill();
+  function drawStart() {
+    drawTransparentBackground();
 
     ctx.font = 'lighter ' + canvas.width / 15 + 'px "Open Sans"';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
-    ctx.fillText('Game Over!', canvas.width / 2, canvas.height/2);
+    ctx.fillText('Break It!', canvas.width / 2, canvas.height / 2);
+    ctx.closePath();
+
+    drawStartButton();
+  }
+
+  function drawStartButton() {
+    ctx.beginPath();
+    ctx.rect(restartButton.x, restartButton.y, restartButton.width, restartButton.height);
+    ctx.fillStyle = restartButton.color;
+    ctx.fill();
+
+    ctx.fillStyle = restartButton.fontColor;
+    ctx.font = restartButton.fontSize + 'px "Open Sans"';
+    ctx.textAlign = 'center';
+    ctx.fillText('Start', canvas.width / 2, restartButton.y + restartButton.fontSize);
+    ctx.closePath();
+  }
+
+  function drawCountDown(countDownStart) {
+    var i = countDownStart;
+    var number = {
+      x: canvas.width / 2,
+      y: canvas.height / 2 + canvas.width / 10,
+      height: canvas.width / 15
+    };
+
+    number.topLeftX = number.x - number.height / 2;
+    number.topLeftY = number.y - number.height;
+
+    function countDownLoop() {
+      ctx.beginPath();
+
+      if (i !== countDownStart) {
+        ctx.rect(number.topLeftX, number.topLeftY, number.height, number.height + 5);
+        ctx.fillStyle = 'rgba(0, 0, 0, .5)';
+        ctx.fill();
+      }
+
+      ctx.font = 'lighter ' + number.height + 'px "Open Sans"';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(i, number.x, number.y);
+      ctx.closePath();
+      setTimeout(function () {
+        ctx.clearRect(number.topLeftX, number.topLeftY, number.height, number.height + 5);
+        i--;
+        if (i > 0) {
+          countDownLoop();
+        }
+      }, 1000)
+    }
+
+    countDownLoop();
+  }
+
+  function drawWin() {
+    drawTransparentBackground();
+
+    ctx.font = 'lighter ' + canvas.width / 15 + 'px "Open Sans"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('You won!', canvas.width / 2, canvas.height / 2);
+    ctx.closePath();
+
+    drawRestartButton();
+  }
+
+  function drawLevelText() {
+    drawTransparentBackground();
+
+    ctx.font = 'lighter ' + canvas.width / 15 + 'px "Open Sans"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Level ' + playerStats.currentLevel, canvas.width / 2, canvas.height / 2);
+    ctx.closePath();
+
+    drawCountDown(3);
+
+    setTimeout(function () {
+      continueAnimating = true;
+      draw();
+    }, 3000);
+  }
+
+  function drawGameOver() {
+    drawTransparentBackground();
+
+    ctx.font = 'lighter ' + canvas.width / 15 + 'px "Open Sans"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2);
     ctx.closePath();
 
     drawRestartButton();
@@ -246,6 +342,13 @@ $(function () {
     ctx.closePath();
   }
 
+  function drawTransparentBackground() {
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(0, 0, 0, .5)';
+    ctx.fill();
+  }
+
   function resetMovements() {
     paddle.x = paddle.startPosition.x;
     paddle.y = paddle.startPosition.y;
@@ -254,6 +357,74 @@ $(function () {
     ball.y = ball.startPosition.y;
     ball.dx = ball.startMovement.dx;
     ball.dy = ball.startMovement.dy;
+  }
+
+  function resetStats() {
+    playerStats.score = 0;
+    playerStats.allowedDeaths = 3;
+    playerStats.deaths = 0;
+  }
+
+  function fillBricksArray(level) {
+    bricksData = {
+      padding: canvas.width / 50,
+      offsetTop: canvas.width / 30,
+      offsetSides: canvas.width / 50,
+      brickHeight: canvas.height / 20,
+      bricksCount: 0
+    };
+
+    var emptyBricks = [];
+
+    switch (level) {
+      case 1:
+        bricksData.rowCount = 1;
+        bricksData.columnCount = 2;
+        break;
+      case 2:
+        bricksData.rowCount = 3;
+        bricksData.columnCount = 5;
+
+        emptyBricks.push({
+          columnIndex: 1,
+          rowIndex: [1]
+        });
+
+        emptyBricks.push({
+          columnIndex: 2,
+          rowIndex: [1]
+        });
+
+        emptyBricks.push({
+          columnIndex: 3,
+          rowIndex: [1]
+        });
+        break;
+    }
+
+    bricksData.brickWidth = (canvas.width - 2 * bricksData.offsetSides) / bricksData.columnCount - bricksData.padding;
+
+    for (var i = 0; i < bricksData.columnCount; i++) {
+      bricks[i] = [];
+
+      var emptyRows = [];
+      emptyBricks.forEach(function (column) {
+        if (column.columnIndex === i) {
+          emptyRows = column.rowIndex;
+        }
+      });
+
+      for (var j = 0; j < bricksData.rowCount; j++) {
+        if (!emptyRows.includes(j)) {
+          bricks[i][j] = {
+            x: bricksData.offsetSides + i * bricksData.brickWidth + bricksData.padding * i,
+            y: bricksData.offsetTop + j * bricksData.brickHeight + bricksData.padding * j
+          };
+
+          bricksData.bricksCount++;
+        }
+      }
+    }
   }
 
   function keyDownHandler(event) {
@@ -278,7 +449,13 @@ $(function () {
 
     // restart button
     if (clickCanvasX >= restartButton.x && clickCanvasX <= restartButton.x + restartButton.width && clickCanvasY >= restartButton.y && clickCanvasY <= restartButton.y + restartButton.height) {
-      location.reload();
+      if (!continueAnimating && !startActive) {
+        location.reload();
+      } else if (startActive) {
+        startActive = false;
+        startLevelActive = true;
+        draw();
+      }
     }
   }
 
